@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spotify 2.0</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <style>
+    :root {
+      --bg-base: #000000;
+      --bg-surface: #121212;
+      --bg-card: #181818;
+      --bg-card-hover: #282828;
+      --accent: #1ed760;
+      --text-main: #ffffff;
+      --text-sub: #a7a7a7;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-base);
+      color: var(--text-main);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .app-layout {
+      display: flex;
+      flex: 1;
+      height: calc(100vh - 90px);
+      gap: 8px;
+      padding: 8px;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 280px;
+      background-color: var(--bg-surface);
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      padding: 16px;
+      gap: 20px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .nav-list { list-style: none; display: flex; flex-direction: column; gap: 14px; }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      color: var(--text-sub);
+      font-weight: 600;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+    .nav-item:hover, .nav-item.active { color: var(--text-main); }
+
+    /* Main Display Area */
+    .main-content {
+      flex: 1;
+      background-color: var(--bg-surface);
+      border-radius: 8px;
+      overflow-y: auto;
+      padding: 24px;
+    }
+
+    .search-bar-container {
+      position: sticky;
+      top: 0;
+      background: rgba(18, 18, 18, 0.8);
+      backdrop-filter: blur(12px);
+      padding-bottom: 20px;
+      z-index: 10;
+    }
+
+    .search-input-wrapper {
+      display: flex;
+      align-items: center;
+      background: #242424;
+      border-radius: 50px;
+      padding: 10px 16px;
+      width: 320px;
+    }
+
+    .search-input-wrapper input {
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #fff;
+      font-size: 0.9rem;
+      margin-left: 10px;
+      width: 100%;
+    }
+
+    .section-title { font-size: 1.5rem; margin-bottom: 16px; font-weight: 700; }
+
+    .track-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 18px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      padding: 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+      position: relative;
+    }
+
+    .card:hover { background: var(--bg-card-hover); }
+
+    .card img {
+      width: 100%;
+      aspect-ratio: 1;
+      object-fit: cover;
+      border-radius: 6px;
+      margin-bottom: 12px;
+    }
+
+    .card-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 4px;
+    }
+
+    .card-sub {
+      font-size: 0.8rem;
+      color: var(--text-sub);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .play-badge {
+      position: absolute;
+      bottom: 85px;
+      right: 24px;
+      width: 48px;
+      height: 48px;
+      background: var(--accent);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #000;
+      font-size: 1.2rem;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: all 0.3s ease;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.4);
+    }
+
+    .card:hover .play-badge { opacity: 1; transform: translateY(0); }
+
+    /* Player Controls Bar */
+    .player-bar {
+      height: 90px;
+      background: var(--bg-base);
+      border-top: 1px solid #282828;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+    }
+
+    .now-playing { display: flex; align-items: center; gap: 14px; width: 30%; }
+    .now-playing img { width: 56px; height: 56px; border-radius: 4px; object-fit: cover; }
+    .track-details { display: flex; flex-direction: column; gap: 2px; }
+    .track-name { font-weight: 600; font-size: 0.9rem; }
+    .track-artist { font-size: 0.75rem; color: var(--text-sub); }
+
+    .center-controls { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 40%; }
+    .control-buttons { display: flex; align-items: center; gap: 20px; }
+    .btn-icon { background: none; border: none; color: var(--text-sub); font-size: 1rem; cursor: pointer; }
+    .btn-icon:hover { color: var(--text-main); }
+    .btn-play-main {
+      background: #fff;
+      color: #000;
+      border: none;
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .progress-bar-container { display: flex; align-items: center; gap: 10px; width: 100%; }
+    .time-label { font-size: 0.75rem; color: var(--text-sub); }
+    
+    input[type=range] {
+      flex: 1;
+      height: 4px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-layout">
+    <div class="sidebar">
+      <div class="brand"><i class="fa-brands fa-spotify" style="color: var(--accent); font-size: 1.8rem;"></i> Spotify 2.0</div>
+      <ul class="nav-list">
+        <li class="nav-item active" onclick="loadDefaultTracks()"><i class="fa-solid fa-house"></i> Home</li>
+        <li class="nav-item"><i class="fa-solid fa-heart"></i> Liked Songs</li>
+      </ul>
+    </div>
+
+    <div class="main-content">
+      <div class="search-bar-container">
+        <div class="search-input-wrapper">
+          <i class="fa-solid fa-magnifying-glass" style="color: var(--text-sub);"></i>
+          <input type="text" id="searchInput" placeholder="Search tracks or artists..." oninput="handleSearch(event)">
+        </div>
+      </div>
+
+      <h2 class="section-title" id="displayTitle">Trending Songs</h2>
+      <div class="track-grid" id="trackGrid"></div>
+    </div>
+  </div>
+
+  <div class="player-bar">
+    <div class="now-playing">
+      <img id="nowArt" src="https://via.placeholder.com/56/282828/ffffff?text=Music" alt="">
+      <div class="track-details">
+        <div class="track-name" id="nowTitle">No Track Selected</div>
+        <div class="track-artist" id="nowArtist">Choose a song from the list</div>
+      </div>
+    </div>
+
+    <div class="center-controls">
+      <div class="control-buttons">
+        <button class="btn-icon"><i class="fa-solid fa-shuffle"></i></button>
+        <button class="btn-icon" onclick="prevTrack()"><i class="fa-solid fa-backward-step"></i></button>
+        <button class="btn-play-main" onclick="togglePlay()"><i id="mainPlayIcon" class="fa-solid fa-play"></i></button>
+        <button class="btn-icon" onclick="nextTrack()"><i class="fa-solid fa-forward-step"></i></button>
+        <button class="btn-icon"><i class="fa-solid fa-repeat"></i></button>
+      </div>
+      <div class="progress-bar-container">
+        <span class="time-label" id="currentTime">0:00</span>
+        <input type="range" id="seekSlider" value="0" min="0" step="1" oninput="seekAudio(this.value)">
+        <span class="time-label" id="durationTime">0:00</span>
+      </div>
+    </div>
+
+    <div style="width: 30%; display: flex; justify-content: flex-end;">
+      <i class="fa-solid fa-volume-high" style="color: var(--text-sub); margin-right: 10px;"></i>
+      <input type="range" style="width: 100px;" value="80" min="0" max="100" oninput="setVolume(this.value)">
+    </div>
+  </div>
+
+  <audio id="audioEngine"></audio>
+
+  <script>
+    const audio = document.getElementById('audioEngine');
+    let playlist = [];
+    let currentIndex = -1;
+
+    async function loadDefaultTracks() {
+      document.getElementById('displayTitle').innerText = 'Trending Songs';
+      fetchTracks('https://itunes.apple.com/search?term=pop&media=music&limit=24');
+    }
+
+    function handleSearch(e) {
+      const q = e.target.value.trim();
+      if (q.length > 1) {
+        document.getElementById('displayTitle').innerText = `Results for "${q}"`;
+        fetchTracks(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&media=music&limit=24`);
+      } else if (q.length === 0) {
+        loadDefaultTracks();
+      }
+    }
+
+    async function fetchTracks(url) {
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+        playlist = data.results || [];
+        renderGrid(playlist);
+      } catch(err) {
+        console.error(err);
+      }
+    }
+
+    function renderGrid(tracks) {
+      const grid = document.getElementById('trackGrid');
+      grid.innerHTML = tracks.map((track, idx) => `
+        <div class="card" onclick="playIndex(${idx})">
+          <img src="${track.artworkUrl100.replace('100x100bb', '400x400bb')}" alt="${track.trackName}">
+          <div class="play-badge"><i class="fa-solid fa-play"></i></div>
+          <div class="card-title">${track.trackName}</div>
+          <div class="card-sub">${track.artistName}</div>
+        </div>
+      `).join('');
+    }
+
+    function playIndex(idx) {
+      currentIndex = idx;
+      const track = playlist[currentIndex];
+      audio.src = track.previewUrl;
+      audio.play();
+      
+      document.getElementById('nowArt').src = track.artworkUrl100;
+      document.getElementById('nowTitle').innerText = track.trackName;
+      document.getElementById('nowArtist').innerText = track.artistName;
+      document.getElementById('mainPlayIcon').className = 'fa-solid fa-pause';
+    }
+
+    function togglePlay() {
+      if (!audio.src) return;
+      if (audio.paused) {
+        audio.play();
+        document.getElementById('mainPlayIcon').className = 'fa-solid fa-pause';
+      } else {
+        audio.pause();
+        document.getElementById('mainPlayIcon').className = 'fa-solid fa-play';
+      }
+    }
+
+    function nextTrack() {
+      if (currentIndex < playlist.length - 1) playIndex(currentIndex + 1);
+    }
+
+    function prevTrack() {
+      if (currentIndex > 0) playIndex(currentIndex - 1);
+    }
+
+    function seekAudio(val) { audio.currentTime = val; }
+    function setVolume(val) { audio.volume = val / 100; }
+
+    audio.ontimeupdate = () => {
+      document.getElementById('seekSlider').max = Math.floor(audio.duration || 0);
+      document.getElementById('seekSlider').value = Math.floor(audio.currentTime || 0);
+      document.getElementById('currentTime').innerText = formatTime(audio.currentTime);
+      document.getElementById('durationTime').innerText = formatTime(audio.duration);
+    };
+
+    audio.onended = () => nextTrack();
+
+    function formatTime(secs) {
+      if (isNaN(secs)) return '0:00';
+      const m = Math.floor(secs / 60);
+      const s = Math.floor(secs % 60);
+      return `${m}:${s < 10 ? '0' : ''}${s}`;
+    }
+
+    loadDefaultTracks();
+  </script>
+</body>
+</html>
