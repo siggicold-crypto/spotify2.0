@@ -212,6 +212,16 @@
       accent-color: var(--accent);
       cursor: pointer;
     }
+
+    /* Hide the embedded YouTube player off-screen */
+    #ytPlayerContainer {
+      position: absolute;
+      top: -9999px;
+      left: -9999px;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+    }
   </style>
 </head>
 <body>
@@ -229,11 +239,11 @@
       <div class="search-bar-container">
         <div class="search-input-wrapper">
           <i class="fa-solid fa-magnifying-glass" style="color: var(--text-sub);"></i>
-          <input type="text" id="searchInput" placeholder="Search Drake, Taylor Swift..." oninput="handleSearch(event)">
+          <input type="text" id="searchInput" placeholder="Search 2Pac, Drake..." oninput="handleSearch(event)">
         </div>
       </div>
 
-      <h2 class="section-title" id="displayTitle">Trending Songs</h2>
+      <h2 class="section-title" id="displayTitle">Trending Full Tracks</h2>
       <div class="track-grid" id="trackGrid"></div>
     </div>
   </div>
@@ -268,23 +278,42 @@
     </div>
   </div>
 
-  <audio id="audioEngine"></audio>
+  <!-- Hidden YouTube Player Container -->
+  <div id="ytPlayerContainer">
+    <div id="youtube-player"></div>
+  </div>
+
+  <!-- Load YouTube IFrame API -->
+  <script src="https://www.youtube.com/iframe_api"></script>
 
   <script>
-    const audio = document.getElementById('audioEngine');
+    let ytPlayer;
     let playlist = [];
     let currentIndex = -1;
+    let updateTimer;
+
+    // Initialize hidden YouTube player engine
+    function onYouTubeIframeAPIReady() {
+      ytPlayer = new YT.Player('youtube-player', {
+        height: '180',
+        width: '320',
+        playerVars: { 'autoplay': 1, 'controls': 0 },
+        events: {
+          'onStateChange': onPlayerStateChange
+        }
+      });
+    }
 
     async function loadDefaultTracks() {
-      document.getElementById('displayTitle').innerText = 'Trending Songs';
-      fetchTracks('https://itunes.apple.com/search?term=pop&media=music&limit=24');
+      document.getElementById('displayTitle').innerText = 'Trending Full Tracks';
+      fetchTracks('https://pipedapi.kavin.rocks/search?q=2pac+full+album+audio&filter=music_videos');
     }
 
     function handleSearch(e) {
       const q = e.target.value.trim();
       if (q.length > 1) {
         document.getElementById('displayTitle').innerText = `Results for "${q}"`;
-        fetchTracks(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&media=music&limit=24`);
+        fetchTracks(`https://pipedapi.kavin.rocks/search?q=${encodeURIComponent(q)}+audio&filter=music_videos`);
       } else if (q.length === 0) {
         loadDefaultTracks();
       }
@@ -294,21 +323,32 @@
       try {
         const res = await fetch(url);
         const data = await res.json();
-        playlist = data.results || [];
+        
+        playlist = (data.items || []).filter(item => item.type === 'stream').map(item => ({
+          id: item.url.split('v=')[1],
+          title: item.title,
+          artist: item.uploaderName,
+          artwork: item.thumbnail
+        }));
+
         renderGrid(playlist);
       } catch(err) {
-        console.error(err);
+        console.error('Error fetching YouTube tracks:', err);
       }
     }
 
     function renderGrid(tracks) {
       const grid = document.getElementById('trackGrid');
+      if (!tracks.length) {
+        grid.innerHTML = '<p style="color: var(--text-sub);">No tracks found.</p>';
+        return;
+      }
       grid.innerHTML = tracks.map((track, idx) => `
         <div class="card" onclick="playIndex(${idx})">
-          <img src="${track.artworkUrl100.replace('100x100bb', '400x400bb')}" alt="${track.trackName}">
+          <img src="${track.artwork}" alt="${track.title}">
           <div class="play-badge"><i class="fa-solid fa-play"></i></div>
-          <div class="card-title">${track.trackName}</div>
-          <div class="card-sub">${track.artistName}</div>
+          <div class="card-title">${track.title}</div>
+          <div class="card-sub">${track.artist}</div>
         </div>
       `).join('');
     }
@@ -316,23 +356,35 @@
     function playIndex(idx) {
       currentIndex = idx;
       const track = playlist[currentIndex];
-      audio.src = track.previewUrl;
-      audio.play();
       
-      document.getElementById('nowArt').src = track.artworkUrl100;
-      document.getElementById('nowTitle').innerText = track.trackName;
-      document.getElementById('nowArtist').innerText = track.artistName;
+      if (ytPlayer && ytPlayer.loadVideoById) {
+        ytPlayer.loadVideoById(track.id);
+      }
+
+      document.getElementById('nowArt').src = track.artwork;
+      document.getElementById('nowTitle').innerText = track.title;
+      document.getElementById('nowArtist').innerText = track.artist;
       document.getElementById('mainPlayIcon').className = 'fa-solid fa-pause';
+
+      clearInterval(updateTimer);
+      updateTimer = setInterval(updateProgress, 1000);
     }
 
     function togglePlay() {
-      if (!audio.src) return;
-      if (audio.paused) {
-        audio.play();
-        document.getElementById('mainPlayIcon').className = 'fa-solid fa-pause';
-      } else {
-        audio.pause();
+      if (!ytPlayer) return;
+      const state = ytPlayer.getPlayerState();
+      if (state === YT.PlayerState.PLAYING) {
+        ytPlayer.pauseVideo();
         document.getElementById('mainPlayIcon').className = 'fa-solid fa-play';
+      } else {
+        ytPlayer.playVideo();
+        document.getElementById('mainPlayIcon').className = 'fa-solid fa-pause';
+      }
+    }
+
+    function onPlayerStateChange(event) {
+      if (event.data === YT.PlayerState.ENDED) {
+        nextTrack();
       }
     }
 
@@ -344,17 +396,25 @@
       if (currentIndex > 0) playIndex(currentIndex - 1);
     }
 
-    function seekAudio(val) { audio.currentTime = val; }
-    function setVolume(val) { audio.volume = val / 100; }
+    function seekAudio(val) {
+      if (ytPlayer && ytPlayer.seekTo) ytPlayer.seekTo(val, true);
+    }
 
-    audio.ontimeupdate = () => {
-      document.getElementById('seekSlider').max = Math.floor(audio.duration || 0);
-      document.getElementById('seekSlider').value = Math.floor(audio.currentTime || 0);
-      document.getElementById('currentTime').innerText = formatTime(audio.currentTime);
-      document.getElementById('durationTime').innerText = formatTime(audio.duration);
-    };
+    function setVolume(val) {
+      if (ytPlayer && ytPlayer.setVolume) ytPlayer.setVolume(val);
+    }
 
-    audio.onended = () => nextTrack();
+    function updateProgress() {
+      if (ytPlayer && ytPlayer.getCurrentTime) {
+        const currentTime = ytPlayer.getCurrentTime() || 0;
+        const duration = ytPlayer.getDuration() || 0;
+        
+        document.getElementById('seekSlider').max = Math.floor(duration);
+        document.getElementById('seekSlider').value = Math.floor(currentTime);
+        document.getElementById('currentTime').innerText = formatTime(currentTime);
+        document.getElementById('durationTime').innerText = formatTime(duration);
+      }
+    }
 
     function formatTime(secs) {
       if (isNaN(secs)) return '0:00';
