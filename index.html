@@ -38,7 +38,6 @@
       padding: 8px;
     }
 
-    /* Sidebar */
     .sidebar {
       width: 280px;
       background-color: var(--bg-surface);
@@ -70,7 +69,6 @@
     }
     .nav-item:hover, .nav-item.active { color: var(--text-main); }
 
-    /* Main Display Area */
     .main-content {
       flex: 1;
       background-color: var(--bg-surface);
@@ -172,7 +170,6 @@
 
     .card:hover .play-badge { opacity: 1; transform: translateY(0); }
 
-    /* Player Controls Bar */
     .player-bar {
       height: 90px;
       background: var(--bg-base);
@@ -232,7 +229,7 @@
       <div class="search-bar-container">
         <div class="search-input-wrapper">
           <i class="fa-solid fa-magnifying-glass" style="color: var(--text-sub);"></i>
-          <input type="text" id="searchInput" placeholder="Search tracks or artists..." oninput="handleSearch(event)">
+          <input type="text" id="searchInput" placeholder="Search Drake, Taylor Swift..." oninput="handleSearch(event)">
         </div>
       </div>
 
@@ -279,15 +276,15 @@
     let currentIndex = -1;
 
     async function loadDefaultTracks() {
-      document.getElementById('displayTitle').innerText = 'Trending Songs';
-      fetchTracks('https://discoveryprovider.audius.co/v1/tracks/trending?limit=30');
+      document.getElementById('displayTitle').innerText = 'Trending Top Hits';
+      fetchTracks('https://itunes.apple.com/search?term=drake&media=music&limit=24');
     }
 
     function handleSearch(e) {
       const q = e.target.value.trim();
       if (q.length > 1) {
         document.getElementById('displayTitle').innerText = `Results for "${q}"`;
-        fetchTracks(`https://discoveryprovider.audius.co/v1/tracks/search?query=${encodeURIComponent(q)}&limit=30`);
+        fetchTracks(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&media=music&limit=24`);
       } else if (q.length === 0) {
         loadDefaultTracks();
       }
@@ -298,12 +295,11 @@
         const res = await fetch(url);
         const json = await res.json();
         
-        playlist = (json.data || []).map(track => ({
-          id: track.id,
-          title: track.title,
-          artist: track.user ? track.user.name : 'Unknown Artist',
-          artwork: track.artwork ? track.artwork['480x480'] : 'https://via.placeholder.com/400/282828/ffffff?text=Music',
-          streamUrl: `https://discoveryprovider.audius.co/v1/tracks/${track.id}/stream`
+        playlist = (json.results || []).map(track => ({
+          title: track.trackName,
+          artist: track.artistName,
+          artwork: track.artworkUrl100 ? track.artworkUrl100.replace('100x100bb', '400x400bb') : 'https://via.placeholder.com/400/282828/ffffff?text=Music',
+          streamUrl: track.previewUrl
         }));
 
         renderGrid(playlist);
@@ -315,7 +311,7 @@
     function renderGrid(tracks) {
       const grid = document.getElementById('trackGrid');
       if (tracks.length === 0) {
-        grid.innerHTML = '<p style="color: var(--text-sub);">No songs found. Try searching for something else!</p>';
+        grid.innerHTML = '<p style="color: var(--text-sub);">No songs found.</p>';
         return;
       }
       
