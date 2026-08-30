@@ -6,7 +6,6 @@
   <title>Spotify 2.0</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <script src="https://w.soundcloud.com/player/api.js"></script>
   
   <style>
     :root {
@@ -213,8 +212,6 @@
       accent-color: var(--accent);
       cursor: pointer;
     }
-
-    #scPlayer { display: none; }
   </style>
 </head>
 <body>
@@ -223,7 +220,7 @@
     <div class="sidebar">
       <div class="brand"><i class="fa-brands fa-spotify" style="color: var(--accent); font-size: 1.8rem;"></i> Spotify 2.0</div>
       <ul class="nav-list">
-        <li class="nav-item active" onclick="renderGrid(defaultTracks)"><i class="fa-solid fa-house"></i> Home</li>
+        <li class="nav-item active" onclick="loadDefaultTracks()"><i class="fa-solid fa-house"></i> Home</li>
         <li class="nav-item"><i class="fa-solid fa-heart"></i> Liked Songs</li>
       </ul>
     </div>
@@ -232,11 +229,11 @@
       <div class="search-bar-container">
         <div class="search-input-wrapper">
           <i class="fa-solid fa-magnifying-glass" style="color: var(--text-sub);"></i>
-          <input type="text" id="searchInput" placeholder="Filter songs..." oninput="handleSearch(event)">
+          <input type="text" id="searchInput" placeholder="Search Drake, Taylor Swift..." oninput="handleSearch(event)">
         </div>
       </div>
 
-      <h2 class="section-title" id="displayTitle">Full Length Tracks</h2>
+      <h2 class="section-title" id="displayTitle">Trending Songs</h2>
       <div class="track-grid" id="trackGrid"></div>
     </div>
   </div>
@@ -271,156 +268,93 @@
     </div>
   </div>
 
-  <iframe id="scPlayer" src="https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/293"></iframe>
+  <audio id="audioEngine"></audio>
 
   <script>
-    const defaultTracks = [
-      {
-        title: "Hit 'Em Up",
-        artist: "2Pac",
-        artwork: "https://picsum.photos/id/1025/400/400",
-        url: "https://soundcloud.com/2pac-official/hit-em-up-album-version-explicit"
-      },
-      {
-        title: "Changes",
-        artist: "2Pac",
-        artwork: "https://picsum.photos/id/1043/400/400",
-        url: "https://soundcloud.com/2pac-official/changes"
-      },
-      {
-        title: "California Love",
-        artist: "2Pac ft. Dr. Dre",
-        artwork: "https://picsum.photos/id/1059/400/400",
-        url: "https://soundcloud.com/2pac-official/california-love-original-version"
-      },
-      {
-        title: "Ambition Az a Ridah",
-        artist: "2Pac",
-        artwork: "https://picsum.photos/id/1062/400/400",
-        url: "https://soundcloud.com/2pac-official/ambition-z-a-ridah"
-      },
-      {
-        title: "God's Plan",
-        artist: "Drake",
-        artwork: "https://picsum.photos/id/1074/400/400",
-        url: "https://soundcloud.com/octobersveryown/drake-gods-plan"
-      },
-      {
-        title: "Hotline Bling",
-        artist: "Drake",
-        artwork: "https://picsum.photos/id/1084/400/400",
-        url: "https://soundcloud.com/octobersveryown/drake-hotline-bling"
-      },
-   {
-      title: "HUMBLE.",
-      artist: "Kendrick Lamar",
-      artwork: "https://picsum.photos/id/1080/400/400",
-      url: "https://soundcloud.com/kendrick-lamar-music/humble"
+    const audio = document.getElementById('audioEngine');
+    let playlist = [];
+    let currentIndex = -1;
+
+    async function loadDefaultTracks() {
+      document.getElementById('displayTitle').innerText = 'Trending Songs';
+      fetchTracks('https://itunes.apple.com/search?term=pop&media=music&limit=24');
     }
-  ];
 
-  let widget;
-  let currentIndex = -1;
-    let isPlaying = false;
-    let currentPlaylist = [...defaultTracks];
+    function handleSearch(e) {
+      const q = e.target.value.trim();
+      if (q.length > 1) {
+        document.getElementById('displayTitle').innerText = `Results for "${q}"`;
+        fetchTracks(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&media=music&limit=24`);
+      } else if (q.length === 0) {
+        loadDefaultTracks();
+      }
+    }
 
-    window.onload = () => {
-      const iframe = document.getElementById('scPlayer');
-      widget = SC.Widget(iframe);
-
-      widget.bind(SC.Widget.Events.READY, () => {
-        widget.setVolume(80);
-      });
-
-      widget.bind(SC.Widget.Events.PLAY_PROGRESS, (data) => {
-        const currentSecs = Math.floor(data.currentPosition / 1000);
-        document.getElementById('currentTime').innerText = formatTime(currentSecs);
-        document.getElementById('seekSlider').value = currentSecs;
-      });
-
-      widget.bind(SC.Widget.Events.FINISH, () => {
-        nextTrack();
-      });
-
-      renderGrid(defaultTracks);
-    };
+    async function fetchTracks(url) {
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+        playlist = data.results || [];
+        renderGrid(playlist);
+      } catch(err) {
+        console.error(err);
+      }
+    }
 
     function renderGrid(tracks) {
-      currentPlaylist = tracks;
       const grid = document.getElementById('trackGrid');
-      if (!tracks.length) {
-        grid.innerHTML = '<p style="color: var(--text-sub);">No tracks found.</p>';
-        return;
-      }
       grid.innerHTML = tracks.map((track, idx) => `
         <div class="card" onclick="playIndex(${idx})">
-          <img src="${track.artwork}" alt="${track.title}">
+          <img src="${track.artworkUrl100.replace('100x100bb', '400x400bb')}" alt="${track.trackName}">
           <div class="play-badge"><i class="fa-solid fa-play"></i></div>
-          <div class="card-title">${track.title}</div>
-          <div class="card-sub">${track.artist}</div>
+          <div class="card-title">${track.trackName}</div>
+          <div class="card-sub">${track.artistName}</div>
         </div>
       `).join('');
     }
 
-    function handleSearch(e) {
-      const q = e.target.value.toLowerCase().trim();
-      if (!q) {
-        renderGrid(defaultTracks);
-        return;
-      }
-      const filtered = defaultTracks.filter(t => 
-        t.title.toLowerCase().includes(q) || t.artist.toLowerCase().includes(q)
-      );
-      renderGrid(filtered);
-    }
-
     function playIndex(idx) {
       currentIndex = idx;
-      const track = currentPlaylist[currentIndex];
-
-      document.getElementById('nowArt').src = track.artwork;
-      document.getElementById('nowTitle').innerText = track.title;
-      document.getElementById('nowArtist').innerText = track.artist;
-
-      widget.load(track.url, {
-        auto_play: true,
-        callback: () => {
-          widget.getDuration((durationMs) => {
-            const totalSecs = Math.floor(durationMs / 1000);
-            document.getElementById('durationTime').innerText = formatTime(totalSecs);
-            document.getElementById('seekSlider').max = totalSecs;
-          });
-          isPlaying = true;
-          document.getElementById('mainPlayIcon').className = 'fa-solid fa-pause';
-        }
-      });
+      const track = playlist[currentIndex];
+      audio.src = track.previewUrl;
+      audio.play();
+      
+      document.getElementById('nowArt').src = track.artworkUrl100;
+      document.getElementById('nowTitle').innerText = track.trackName;
+      document.getElementById('nowArtist').innerText = track.artistName;
+      document.getElementById('mainPlayIcon').className = 'fa-solid fa-pause';
     }
 
     function togglePlay() {
-      if (currentIndex === -1) {
-        playIndex(0);
-        return;
+      if (!audio.src) return;
+      if (audio.paused) {
+        audio.play();
+        document.getElementById('mainPlayIcon').className = 'fa-solid fa-pause';
+      } else {
+        audio.pause();
+        document.getElementById('mainPlayIcon').className = 'fa-solid fa-play';
       }
-      widget.toggle();
-      isPlaying = !isPlaying;
-      document.getElementById('mainPlayIcon').className = isPlaying ? 'fa-solid fa-pause' : 'fa-solid fa-play';
     }
 
     function nextTrack() {
-      if (currentIndex < currentPlaylist.length - 1) playIndex(currentIndex + 1);
+      if (currentIndex < playlist.length - 1) playIndex(currentIndex + 1);
     }
 
     function prevTrack() {
       if (currentIndex > 0) playIndex(currentIndex - 1);
     }
 
-    function seekAudio(secs) {
-      widget.seekTo(secs * 1000);
-    }
+    function seekAudio(val) { audio.currentTime = val; }
+    function setVolume(val) { audio.volume = val / 100; }
 
-    function setVolume(val) {
-      widget.setVolume(val);
-    }
+    audio.ontimeupdate = () => {
+      document.getElementById('seekSlider').max = Math.floor(audio.duration || 0);
+      document.getElementById('seekSlider').value = Math.floor(audio.currentTime || 0);
+      document.getElementById('currentTime').innerText = formatTime(audio.currentTime);
+      document.getElementById('durationTime').innerText = formatTime(audio.duration);
+    };
+
+    audio.onended = () => nextTrack();
 
     function formatTime(secs) {
       if (isNaN(secs)) return '0:00';
@@ -428,6 +362,8 @@
       const s = Math.floor(secs % 60);
       return `${m}:${s < 10 ? '0' : ''}${s}`;
     }
+
+    loadDefaultTracks();
   </script>
 </body>
 </html>
