@@ -280,14 +280,14 @@
 
     async function loadDefaultTracks() {
       document.getElementById('displayTitle').innerText = 'Trending Songs';
-      fetchTracks('https://itunes.apple.com/search?term=pop&media=music&limit=24');
+      fetchTracks('https://discoveryprovider.audius.co/v1/tracks/trending?limit=30');
     }
 
     function handleSearch(e) {
       const q = e.target.value.trim();
       if (q.length > 1) {
         document.getElementById('displayTitle').innerText = `Results for "${q}"`;
-        fetchTracks(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&media=music&limit=24`);
+        fetchTracks(`https://discoveryprovider.audius.co/v1/tracks/search?query=${encodeURIComponent(q)}&limit=30`);
       } else if (q.length === 0) {
         loadDefaultTracks();
       }
@@ -296,22 +296,35 @@
     async function fetchTracks(url) {
       try {
         const res = await fetch(url);
-        const data = await res.json();
-        playlist = data.results || [];
+        const json = await res.json();
+        
+        playlist = (json.data || []).map(track => ({
+          id: track.id,
+          title: track.title,
+          artist: track.user ? track.user.name : 'Unknown Artist',
+          artwork: track.artwork ? track.artwork['480x480'] : 'https://via.placeholder.com/400/282828/ffffff?text=Music',
+          streamUrl: `https://discoveryprovider.audius.co/v1/tracks/${track.id}/stream`
+        }));
+
         renderGrid(playlist);
       } catch(err) {
-        console.error(err);
+        console.error('Error loading tracks:', err);
       }
     }
 
     function renderGrid(tracks) {
       const grid = document.getElementById('trackGrid');
+      if (tracks.length === 0) {
+        grid.innerHTML = '<p style="color: var(--text-sub);">No songs found. Try searching for something else!</p>';
+        return;
+      }
+      
       grid.innerHTML = tracks.map((track, idx) => `
         <div class="card" onclick="playIndex(${idx})">
-          <img src="${track.artworkUrl100.replace('100x100bb', '400x400bb')}" alt="${track.trackName}">
+          <img src="${track.artwork}" alt="${track.title}">
           <div class="play-badge"><i class="fa-solid fa-play"></i></div>
-          <div class="card-title">${track.trackName}</div>
-          <div class="card-sub">${track.artistName}</div>
+          <div class="card-title">${track.title}</div>
+          <div class="card-sub">${track.artist}</div>
         </div>
       `).join('');
     }
@@ -319,12 +332,13 @@
     function playIndex(idx) {
       currentIndex = idx;
       const track = playlist[currentIndex];
-      audio.src = track.previewUrl;
+      
+      audio.src = track.streamUrl;
       audio.play();
       
-      document.getElementById('nowArt').src = track.artworkUrl100;
-      document.getElementById('nowTitle').innerText = track.trackName;
-      document.getElementById('nowArtist').innerText = track.artistName;
+      document.getElementById('nowArt').src = track.artwork;
+      document.getElementById('nowTitle').innerText = track.title;
+      document.getElementById('nowArtist').innerText = track.artist;
       document.getElementById('mainPlayIcon').className = 'fa-solid fa-pause';
     }
 
