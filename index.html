@@ -6,6 +6,7 @@
   <title>Spotify 2.0</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://w.soundcloud.com/player/api.js"></script>
   
   <style>
     :root {
@@ -213,14 +214,7 @@
       cursor: pointer;
     }
 
-    #ytPlayerContainer {
-      position: absolute;
-      top: -9999px;
-      left: -9999px;
-      width: 1px;
-      height: 1px;
-      overflow: hidden;
-    }
+    #scPlayer { display: none; }
   </style>
 </head>
 <body>
@@ -229,7 +223,7 @@
     <div class="sidebar">
       <div class="brand"><i class="fa-brands fa-spotify" style="color: var(--accent); font-size: 1.8rem;"></i> Spotify 2.0</div>
       <ul class="nav-list">
-        <li class="nav-item active" onclick="loadDefaultTracks()"><i class="fa-solid fa-house"></i> Home</li>
+        <li class="nav-item active" onclick="renderGrid(defaultTracks)"><i class="fa-solid fa-house"></i> Home</li>
         <li class="nav-item"><i class="fa-solid fa-heart"></i> Liked Songs</li>
       </ul>
     </div>
@@ -238,11 +232,11 @@
       <div class="search-bar-container">
         <div class="search-input-wrapper">
           <i class="fa-solid fa-magnifying-glass" style="color: var(--text-sub);"></i>
-          <input type="text" id="searchInput" placeholder="Search 2Pac, Drake, Kendrick..." oninput="handleSearch(event)">
+          <input type="text" id="searchInput" placeholder="Filter songs..." oninput="handleSearch(event)">
         </div>
       </div>
 
-      <h2 class="section-title" id="displayTitle">Trending Songs</h2>
+      <h2 class="section-title" id="displayTitle">Full Length Tracks</h2>
       <div class="track-grid" id="trackGrid"></div>
     </div>
   </div>
@@ -277,80 +271,82 @@
     </div>
   </div>
 
-  <div id="ytPlayerContainer">
-    <div id="youtube-player"></div>
-  </div>
-
-  <script src="https://www.youtube.com/iframe_api"></script>
+  <iframe id="scPlayer" src="https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/293"></iframe>
 
   <script>
-    let ytPlayer;
-    let playlist = [];
-    let currentIndex = -1;
-    let updateTimer;
-
-    function onYouTubeIframeAPIReady() {
-      ytPlayer = new YT.Player('youtube-player', {
-        height: '180',
-        width: '320',
-        playerVars: { 'autoplay': 1, 'controls': 0 },
-        events: { 'onStateChange': onPlayerStateChange }
-      });
-    }
-
-    const apiInstances = [
-      'https://inv.hostux.net',
-      'https://invidious.nerdvpn.de',
-      'https://invidious.drgns.space',
-      'https://vid.puffyan.us'
+    const defaultTracks = [
+      {
+        title: "Hit 'Em Up",
+        artist: "2Pac",
+        artwork: "https://i1.sndcdn.com/artworks-000185340156-f8753e-t500x500.jpg",
+        url: "https://soundcloud.com/2pac-official/hit-em-up-album-version-explicit"
+      },
+      {
+        title: "Changes",
+        artist: "2Pac",
+        artwork: "https://i1.sndcdn.com/artworks-000003058882-s5l0v7-t500x500.jpg",
+        url: "https://soundcloud.com/2pac-official/changes"
+      },
+      {
+        title: "California Love",
+        artist: "2Pac ft. Dr. Dre",
+        artwork: "https://i1.sndcdn.com/artworks-000003058882-s5l0v7-t500x500.jpg",
+        url: "https://soundcloud.com/2pac-official/california-love-original-version"
+      },
+      {
+        title: "Ambition Az a Ridah",
+        artist: "2Pac",
+        artwork: "https://i1.sndcdn.com/artworks-000185340156-f8753e-t500x500.jpg",
+        url: "https://soundcloud.com/2pac-official/ambition-z-a-ridah"
+      },
+      {
+        title: "God's Plan",
+        artist: "Drake",
+        artwork: "https://i1.sndcdn.com/artworks-000287754593-o6w1ms-t500x500.jpg",
+        url: "https://soundcloud.com/octobersveryown/drake-gods-plan"
+      },
+      {
+        title: "Hotline Bling",
+        artist: "Drake",
+        artwork: "https://i1.sndcdn.com/artworks-000125211913-c9y9a3-t500x500.jpg",
+        url: "https://soundcloud.com/octobersveryown/drake-hotline-bling"
+      },
+      {
+        title: "HUMBLE.",
+        artist: "Kendrick Lamar",
+        artwork: "https://i1.sndcdn.com/artworks-000215093766-u4m7zp-t500x500.jpg",
+        url: "https://soundcloud.com/kendrick-lamar-music/humble"
+      }
     ];
 
-    async function loadDefaultTracks() {
-      document.getElementById('displayTitle').innerText = 'Trending Songs';
-      fetchTracks('2pac full audio');
-    }
+    let widget;
+    let currentIndex = -1;
+    let isPlaying = false;
+    let currentPlaylist = [...defaultTracks];
 
-    function handleSearch(e) {
-      const q = e.target.value.trim();
-      if (q.length > 1) {
-        document.getElementById('displayTitle').innerText = `Results for "${q}"`;
-        fetchTracks(`${q} audio`);
-      } else if (q.length === 0) {
-        loadDefaultTracks();
-      }
-    }
+    window.onload = () => {
+      const iframe = document.getElementById('scPlayer');
+      widget = SC.Widget(iframe);
 
-    async function fetchTracks(query) {
-      document.getElementById('trackGrid').innerHTML = '<p style="color: var(--text-sub);">Loading songs...</p>';
-      
-      let success = false;
-      for (const host of apiInstances) {
-        try {
-          const res = await fetch(`${host}/api/v1/search?q=${encodeURIComponent(query)}&type=video`);
-          if (!res.ok) continue;
-          const data = await res.json();
-          
-          playlist = data.map(item => ({
-            id: item.videoId,
-            title: item.title,
-            artist: item.author || 'Artist',
-            artwork: item.videoThumbnails ? (item.videoThumbnails.find(t => t.quality === 'medium') || item.videoThumbnails[0]).url : 'https://via.placeholder.com/400/282828/ffffff?text=Music'
-          }));
+      widget.bind(SC.Widget.Events.READY, () => {
+        widget.setVolume(80);
+      });
 
-          renderGrid(playlist);
-          success = true;
-          break;
-        } catch(e) {
-          console.warn(`Failed fetching from ${host}, trying next...`);
-        }
-      }
+      widget.bind(SC.Widget.Events.PLAY_PROGRESS, (data) => {
+        const currentSecs = Math.floor(data.currentPosition / 1000);
+        document.getElementById('currentTime').innerText = formatTime(currentSecs);
+        document.getElementById('seekSlider').value = currentSecs;
+      });
 
-      if (!success) {
-        document.getElementById('trackGrid').innerHTML = '<p style="color: var(--text-sub);">Could not load songs right now. Please try again.</p>';
-      }
-    }
+      widget.bind(SC.Widget.Events.FINISH, () => {
+        nextTrack();
+      });
+
+      renderGrid(defaultTracks);
+    };
 
     function renderGrid(tracks) {
+      currentPlaylist = tracks;
       const grid = document.getElementById('trackGrid');
       if (!tracks.length) {
         grid.innerHTML = '<p style="color: var(--text-sub);">No tracks found.</p>';
@@ -366,67 +362,64 @@
       `).join('');
     }
 
+    function handleSearch(e) {
+      const q = e.target.value.toLowerCase().trim();
+      if (!q) {
+        renderGrid(defaultTracks);
+        return;
+      }
+      const filtered = defaultTracks.filter(t => 
+        t.title.toLowerCase().includes(q) || t.artist.toLowerCase().includes(q)
+      );
+      renderGrid(filtered);
+    }
+
     function playIndex(idx) {
       currentIndex = idx;
-      const track = playlist[currentIndex];
-      
-      if (ytPlayer && ytPlayer.loadVideoById) {
-        ytPlayer.loadVideoById(track.id);
-      }
+      const track = currentPlaylist[currentIndex];
 
       document.getElementById('nowArt').src = track.artwork;
       document.getElementById('nowTitle').innerText = track.title;
       document.getElementById('nowArtist').innerText = track.artist;
-      document.getElementById('mainPlayIcon').className = 'fa-solid fa-pause';
 
-      clearInterval(updateTimer);
-      updateTimer = setInterval(updateProgress, 1000);
+      widget.load(track.url, {
+        auto_play: true,
+        callback: () => {
+          widget.getDuration((durationMs) => {
+            const totalSecs = Math.floor(durationMs / 1000);
+            document.getElementById('durationTime').innerText = formatTime(totalSecs);
+            document.getElementById('seekSlider').max = totalSecs;
+          });
+          isPlaying = true;
+          document.getElementById('mainPlayIcon').className = 'fa-solid fa-pause';
+        }
+      });
     }
 
     function togglePlay() {
-      if (!ytPlayer) return;
-      const state = ytPlayer.getPlayerState();
-      if (state === YT.PlayerState.PLAYING) {
-        ytPlayer.pauseVideo();
-        document.getElementById('mainPlayIcon').className = 'fa-solid fa-play';
-      } else {
-        ytPlayer.playVideo();
-        document.getElementById('mainPlayIcon').className = 'fa-solid fa-pause';
+      if (currentIndex === -1) {
+        playIndex(0);
+        return;
       }
-    }
-
-    function onPlayerStateChange(event) {
-      if (event.data === YT.PlayerState.ENDED) {
-        nextTrack();
-      }
+      widget.toggle();
+      isPlaying = !isPlaying;
+      document.getElementById('mainPlayIcon').className = isPlaying ? 'fa-solid fa-pause' : 'fa-solid fa-play';
     }
 
     function nextTrack() {
-      if (currentIndex < playlist.length - 1) playIndex(currentIndex + 1);
+      if (currentIndex < currentPlaylist.length - 1) playIndex(currentIndex + 1);
     }
 
     function prevTrack() {
       if (currentIndex > 0) playIndex(currentIndex - 1);
     }
 
-    function seekAudio(val) {
-      if (ytPlayer && ytPlayer.seekTo) ytPlayer.seekTo(val, true);
+    function seekAudio(secs) {
+      widget.seekTo(secs * 1000);
     }
 
     function setVolume(val) {
-      if (ytPlayer && ytPlayer.setVolume) ytPlayer.setVolume(val);
-    }
-
-    function updateProgress() {
-      if (ytPlayer && ytPlayer.getCurrentTime) {
-        const currentTime = ytPlayer.getCurrentTime() || 0;
-        const duration = ytPlayer.getDuration() || 0;
-        
-        document.getElementById('seekSlider').max = Math.floor(duration);
-        document.getElementById('seekSlider').value = Math.floor(currentTime);
-        document.getElementById('currentTime').innerText = formatTime(currentTime);
-        document.getElementById('durationTime').innerText = formatTime(duration);
-      }
+      widget.setVolume(val);
     }
 
     function formatTime(secs) {
@@ -435,8 +428,6 @@
       const s = Math.floor(secs % 60);
       return `${m}:${s < 10 ? '0' : ''}${s}`;
     }
-
-    loadDefaultTracks();
   </script>
 </body>
 </html>
