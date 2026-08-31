@@ -33,7 +33,7 @@
     .app-layout {
       display: flex;
       flex: 1;
-      height: calc(100vh - 170px);
+      height: calc(100vh - 90px);
       gap: 8px;
       padding: 8px;
     }
@@ -141,20 +141,54 @@
 
     .card:hover .play-badge { opacity: 1; transform: translateY(0); }
 
-    .player-container {
-      height: 160px;
+    .player-bar {
+      height: 90px;
       background: var(--bg-base);
       border-top: 1px solid #282828;
-      padding: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
     }
 
-    iframe {
-      width: 100%;
-      height: 100%;
+    .now-playing { display: flex; align-items: center; gap: 14px; width: 30%; }
+    .now-playing img { width: 56px; height: 56px; border-radius: 4px; object-fit: cover; }
+    .track-details { display: flex; flex-direction: column; gap: 2px; }
+    .track-name { font-weight: 600; font-size: 0.9rem; }
+    .track-artist { font-size: 0.75rem; color: var(--text-sub); }
+
+    .center-controls { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 40%; }
+    .control-buttons { display: flex; align-items: center; gap: 20px; }
+    .btn-icon { background: none; border: none; color: var(--text-sub); font-size: 1rem; cursor: pointer; }
+    .btn-icon:hover { color: var(--text-main); }
+    .btn-play-main {
+      background: #fff;
+      color: #000;
       border: none;
-      border-radius: 8px;
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
     }
+
+    .progress-bar-container { display: flex; align-items: center; gap: 10px; width: 100%; }
+    .time-label { font-size: 0.75rem; color: var(--text-sub); }
+    
+    input[type=range] {
+      flex: 1;
+      height: 4px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    /* Hidden iframe element used as the background sound engine */
+    #sc-engine { display: none; }
   </style>
+
+  <script src="https://w.soundcloud.com/player/api.js"></script>
 </head>
 <body>
 
@@ -168,14 +202,42 @@
     </div>
 
     <div class="main-content">
-      <h2 class="section-title">Featured Full Tracks</h2>
+      <h2 class="section-title">Featured Tracks</h2>
       <div class="track-grid" id="trackGrid"></div>
     </div>
   </div>
 
-  <div class="player-container">
-    <iframe id="sc-player" src="https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/293&color=%231ed760&auto_play=false&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false"></iframe>
+  <div class="player-bar">
+    <div class="now-playing">
+      <img id="nowArt" src="https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300" alt="">
+      <div class="track-details">
+        <div class="track-name" id="nowTitle">No Track Selected</div>
+        <div class="track-artist" id="nowArtist">Choose a song from the list</div>
+      </div>
+    </div>
+
+    <div class="center-controls">
+      <div class="control-buttons">
+        <button class="btn-icon"><i class="fa-solid fa-shuffle"></i></button>
+        <button class="btn-icon" onclick="prevTrack()"><i class="fa-solid fa-backward-step"></i></button>
+        <button class="btn-play-main" onclick="togglePlay()"><i id="mainPlayIcon" class="fa-solid fa-play"></i></button>
+        <button class="btn-icon" onclick="nextTrack()"><i class="fa-solid fa-forward-step"></i></button>
+        <button class="btn-icon"><i class="fa-solid fa-repeat"></i></button>
+      </div>
+      <div class="progress-bar-container">
+        <span class="time-label" id="currentTime">0:00</span>
+        <input type="range" id="seekSlider" value="0" min="0" step="1000" oninput="seekAudio(this.value)">
+        <span class="time-label" id="durationTime">0:00</span>
+      </div>
+    </div>
+
+    <div style="width: 30%; display: flex; justify-content: flex-end;">
+      <i class="fa-solid fa-volume-high" style="color: var(--text-sub); margin-right: 10px;"></i>
+      <input type="range" style="width: 100px;" value="80" min="0" max="100" oninput="setVolume(this.value)">
+    </div>
   </div>
+
+  <iframe id="sc-engine" src="https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/293"></iframe>
 
   <script>
     const tracks = [
@@ -183,43 +245,119 @@
         title: "Starboy",
         artist: "The Weeknd",
         artwork: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400",
-        scUrl: "https://soundcloud.com/theweeknd/starboy-1"
+        url: "https://soundcloud.com/theweeknd/starboy-1"
       },
       {
         title: "Blinding Lights",
         artist: "The Weeknd",
         artwork: "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=400",
-        scUrl: "https://soundcloud.com/theweeknd/blinding-lights"
+        url: "https://soundcloud.com/theweeknd/blinding-lights"
       },
       {
         title: "Sunflower",
         artist: "Post Malone & Swae Lee",
         artwork: "https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=400",
-        scUrl: "https://soundcloud.com/postmalone/sunflower-spider-man-into-the-spider-verse"
+        url: "https://soundcloud.com/postmalone/sunflower-spider-man-into-the-spider-verse"
       },
       {
-        title: "Lofi Hip Hop Radio",
+        title: "Lofi Hip Hop Beats",
         artist: "Lofi Girl",
         artwork: "https://images.unsplash.com/photo-1511192336575-5a79af67a629?w=400",
-        scUrl: "https://soundcloud.com/lofigirl/lofi-hip-hop-radio-beats-to-relaxstudy-to"
+        url: "https://soundcloud.com/lofigirl/lofi-hip-hop-radio-beats-to-relaxstudy-to"
       }
     ];
 
-    const grid = document.getElementById('trackGrid');
-    const iframe = document.getElementById('sc-player');
+    let widget;
+    let currentIndex = -1;
+    let isPlaying = false;
+    let trackDuration = 0;
 
-    grid.innerHTML = tracks.map((track, idx) => `
-      <div class="card" onclick="playTrack('${track.scUrl}')">
-        <img src="${track.artwork}" alt="${track.title}">
-        <div class="play-badge"><i class="fa-solid fa-play"></i></div>
-        <div class="card-title">${track.title}</div>
-        <div class="card-sub">${track.artist}</div>
-      </div>
-    `).join('');
+    window.onload = () => {
+      const iframe = document.getElementById('sc-engine');
+      widget = SC.Widget(iframe);
 
-    function playTrack(url) {
-      const encodedUrl = encodeURIComponent(url);
-      iframe.src = `https://w.soundcloud.com/player/?url=${encodedUrl}&color=%231ed760&auto_play=true&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false`;
+      widget.bind(SC.Widget.Events.READY, () => {
+        widget.setVolume(80);
+      });
+
+      widget.bind(SC.Widget.Events.PLAY_PROGRESS, (data) => {
+        document.getElementById('currentTime').innerText = formatTime(data.currentPosition / 1000);
+        document.getElementById('seekSlider').value = data.currentPosition;
+      });
+
+      widget.bind(SC.Widget.Events.FINISH, () => {
+        nextTrack();
+      });
+
+      renderGrid();
+    };
+
+    function renderGrid() {
+      const grid = document.getElementById('trackGrid');
+      grid.innerHTML = tracks.map((track, idx) => `
+        <div class="card" onclick="playIndex(${idx})">
+          <img src="${track.artwork}" alt="${track.title}">
+          <div class="play-badge"><i class="fa-solid fa-play"></i></div>
+          <div class="card-title">${track.title}</div>
+          <div class="card-sub">${track.artist}</div>
+        </div>
+      `).join('');
+    }
+
+    function playIndex(idx) {
+      if (idx < 0 || idx >= tracks.length) return;
+      currentIndex = idx;
+      const track = tracks[currentIndex];
+
+      document.getElementById('nowArt').src = track.artwork;
+      document.getElementById('nowTitle').innerText = track.title;
+      document.getElementById('nowArtist').innerText = track.artist;
+
+      widget.load(track.url, {
+        auto_play: true,
+        callback: () => {
+          widget.getDuration((d) => {
+            trackDuration = d;
+            document.getElementById('durationTime').innerText = formatTime(d / 1000);
+            document.getElementById('seekSlider').max = d;
+          });
+          isPlaying = true;
+          document.getElementById('mainPlayIcon').className = 'fa-solid fa-pause';
+        }
+      });
+    }
+
+    function togglePlay() {
+      if (currentIndex === -1) {
+        playIndex(0);
+        return;
+      }
+      widget.toggle();
+      isPlaying = !isPlaying;
+      document.getElementById('mainPlayIcon').className = isPlaying ? 'fa-solid fa-pause' : 'fa-solid fa-play';
+    }
+
+    function nextTrack() {
+      if (currentIndex < tracks.length - 1) playIndex(currentIndex + 1);
+    }
+
+    function prevTrack() {
+      if (currentIndex > 0) playIndex(currentIndex - 1);
+    }
+
+    function seekAudio(val) {
+      widget.seekTo(val);
+    }
+
+    function setVolume(val) {
+      widget.setVolume(val);
+    }
+
+    function formatTime(secs) {
+      if (isNaN(secs) || secs < 0) return '0:00';
+      const m = Math.floor(secs / 60);
+      const s = Math.floor(secs % 60);
+      return `${m}:${s < 10 ? '0' : ''}${s}`;
     }
   </script>
 </body>
