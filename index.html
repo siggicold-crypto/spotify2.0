@@ -229,18 +229,18 @@
       <div class="search-bar-container">
         <div class="search-input-wrapper">
           <i class="fa-solid fa-magnifying-glass" style="color: var(--text-sub);"></i>
-          <input type="text" id="searchInput" placeholder="Search rock, pop, hiphop..." oninput="handleSearch(event)">
+          <input type="text" id="searchInput" placeholder="Search track or artist..." oninput="handleSearch(event)">
         </div>
       </div>
 
-      <h2 class="section-title" id="displayTitle">Trending Full Songs</h2>
+      <h2 class="section-title" id="displayTitle">Full Length Tracks</h2>
       <div class="track-grid" id="trackGrid"></div>
     </div>
   </div>
 
   <div class="player-bar">
     <div class="now-playing">
-      <img id="nowArt" src="https://via.placeholder.com/56/282828/ffffff?text=Music" alt="">
+      <img id="nowArt" src="https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300" alt="">
       <div class="track-details">
         <div class="track-name" id="nowTitle">No Track Selected</div>
         <div class="track-artist" id="nowArtist">Choose a song from the list</div>
@@ -272,38 +272,66 @@
 
   <script>
     const audio = document.getElementById('audioEngine');
-    const clientId = 'c5a925f6';
-    let playlist = [];
-    let currentIndex = -1;
-    let searchTimeout = null;
 
-    async function loadDefaultTracks() {
-      document.getElementById('displayTitle').innerText = 'Trending Full Songs';
-      fetchTracks(`https://api.jamendo.com/v3.0/tracks/?client_id=${clientId}&format=json&limit=24&order=popularity_week`);
+    const defaultTracks = [
+      {
+        title: "Lofi Study Session",
+        artist: "Chill Beats",
+        artwork: "https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=400",
+        url: "https://ia801503.us.archive.org/15/items/chill-lofi-song/ChillLofiSong.mp3"
+      },
+      {
+        title: "Midnight Drive",
+        artist: "Synthwave",
+        artwork: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400",
+        url: "https://ia800902.us.archive.org/28/items/synthwave-track/Synthwave.mp3"
+      },
+      {
+        title: "Acoustic Sun",
+        artist: "Guitar Session",
+        artwork: "https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=400",
+        url: "https://ia800201.us.archive.org/12/items/acoustic-guitar-track/Acoustic.mp3"
+      },
+      {
+        title: "Deep House Vibe",
+        artist: "Electronic",
+        artwork: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400",
+        url: "https://ia800501.us.archive.org/2/items/electronic-beat-track/Electronic.mp3"
+      },
+      {
+        title: "Jazz Lounge",
+        artist: "Smooth Quartet",
+        artwork: "https://images.unsplash.com/photo-1511192336575-5a79af67a629?w=400",
+        url: "https://ia800302.us.archive.org/1/items/smooth-jazz-track/Jazz.mp3"
+      },
+      {
+        title: "Ambient Dreams",
+        artist: "Relaxation",
+        artwork: "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=400",
+        url: "https://ia801402.us.archive.org/3/items/ambient-relaxing-track/Ambient.mp3"
+      }
+    ];
+
+    let currentIndex = -1;
+    let currentPlaylist = [...defaultTracks];
+
+    function loadDefaultTracks() {
+      currentPlaylist = [...defaultTracks];
+      document.getElementById('displayTitle').innerText = 'Full Length Tracks';
+      renderGrid(currentPlaylist);
     }
 
     function handleSearch(e) {
-      clearTimeout(searchTimeout);
-      const q = e.target.value.trim();
-      searchTimeout = setTimeout(() => {
-        if (q.length > 1) {
-          document.getElementById('displayTitle').innerText = `Results for "${q}"`;
-          fetchTracks(`https://api.jamendo.com/v3.0/tracks/?client_id=${clientId}&format=json&limit=24&namesearch=${encodeURIComponent(q)}`);
-        } else if (q.length === 0) {
-          loadDefaultTracks();
-        }
-      }, 400);
-    }
-
-    async function fetchTracks(url) {
-      try {
-        const res = await fetch(url);
-        const data = await res.json();
-        playlist = data.results || [];
-        renderGrid(playlist);
-      } catch(err) {
-        console.error(err);
+      const query = e.target.value.toLowerCase().trim();
+      if (!query) {
+        loadDefaultTracks();
+        return;
       }
+      currentPlaylist = defaultTracks.filter(t => 
+        t.title.toLowerCase().includes(query) || t.artist.toLowerCase().includes(query)
+      );
+      document.getElementById('displayTitle').innerText = `Results for "${query}"`;
+      renderGrid(currentPlaylist);
     }
 
     function renderGrid(tracks) {
@@ -314,31 +342,32 @@
       }
       grid.innerHTML = tracks.map((track, idx) => `
         <div class="card" onclick="playIndex(${idx})">
-          <img src="${track.album_image || track.image}" alt="${track.name}">
+          <img src="${track.artwork}" alt="${track.title}">
           <div class="play-badge"><i class="fa-solid fa-play"></i></div>
-          <div class="card-title">${track.name}</div>
-          <div class="card-sub">${track.artist_name}</div>
+          <div class="card-title">${track.title}</div>
+          <div class="card-sub">${track.artist}</div>
         </div>
       `).join('');
     }
 
     function playIndex(idx) {
-      if (idx < 0 || idx >= playlist.length) return;
+      if (idx < 0 || idx >= currentPlaylist.length) return;
       currentIndex = idx;
-      const track = playlist[currentIndex];
+      const track = currentPlaylist[currentIndex];
 
-      audio.src = track.audio;
+      document.getElementById('nowArt').src = track.artwork;
+      document.getElementById('nowTitle').innerText = track.title;
+      document.getElementById('nowArtist').innerText = track.artist;
+
+      audio.src = track.url;
       audio.play();
-      
-      document.getElementById('nowArt').src = track.album_image || track.image;
-      document.getElementById('nowTitle').innerText = track.name;
-      document.getElementById('nowArtist').innerText = track.artist_name;
+
       document.getElementById('mainPlayIcon').className = 'fa-solid fa-pause';
     }
 
     function togglePlay() {
-      if (!audio.src) {
-        if (playlist.length > 0) playIndex(0);
+      if (currentIndex === -1) {
+        playIndex(0);
         return;
       }
       if (audio.paused) {
@@ -351,7 +380,7 @@
     }
 
     function nextTrack() {
-      if (currentIndex < playlist.length - 1) playIndex(currentIndex + 1);
+      if (currentIndex < currentPlaylist.length - 1) playIndex(currentIndex + 1);
     }
 
     function prevTrack() {
