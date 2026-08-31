@@ -229,7 +229,7 @@
       <div class="search-bar-container">
         <div class="search-input-wrapper">
           <i class="fa-solid fa-magnifying-glass" style="color: var(--text-sub);"></i>
-          <input type="text" id="searchInput" placeholder="Search track or artist..." oninput="handleSearch(event)">
+          <input type="text" id="searchInput" placeholder="Search title or artist..." oninput="handleSearch(event)">
         </div>
       </div>
 
@@ -268,47 +268,47 @@
     </div>
   </div>
 
-  <audio id="audioEngine"></audio>
+  <audio id="audioEngine" crossorigin="anonymous"></audio>
 
   <script>
     const audio = document.getElementById('audioEngine');
 
     const defaultTracks = [
       {
-        title: "Lofi Study Session",
-        artist: "Chill Beats",
+        title: "Symphony No. 5",
+        artist: "Ludwig van Beethoven",
         artwork: "https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=400",
-        url: "https://ia801503.us.archive.org/15/items/chill-lofi-song/ChillLofiSong.mp3"
+        url: "https://upload.wikimedia.org/wikipedia/commons/4/4c/Beethoven_Symphony_No._5_op._67_-_1._Allegro_con_brio.mp3"
       },
       {
-        title: "Midnight Drive",
-        artist: "Synthwave",
+        title: "Clair de Lune",
+        artist: "Claude Debussy",
         artwork: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400",
-        url: "https://ia800902.us.archive.org/28/items/synthwave-track/Synthwave.mp3"
+        url: "https://upload.wikimedia.org/wikipedia/commons/7/7b/Clair_de_lune_%22Suite_bergamasque%22_n%C2%B03.mp3"
       },
       {
-        title: "Acoustic Sun",
-        artist: "Guitar Session",
+        title: "Eine kleine Nachtmusik",
+        artist: "Wolfgang Amadeus Mozart",
         artwork: "https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=400",
-        url: "https://ia800201.us.archive.org/12/items/acoustic-guitar-track/Acoustic.mp3"
+        url: "https://upload.wikimedia.org/wikipedia/commons/a/a2/Mozart_-_Eine_kleine_Nachtmusik_-_1._Allegro.mp3"
       },
       {
-        title: "Deep House Vibe",
-        artist: "Electronic",
+        title: "Moonlight Sonata",
+        artist: "Ludwig van Beethoven",
         artwork: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400",
-        url: "https://ia800501.us.archive.org/2/items/electronic-beat-track/Electronic.mp3"
+        url: "https://upload.wikimedia.org/wikipedia/commons/a/a9/Moonlight_Sonata_1st_movement.mp3"
       },
       {
-        title: "Jazz Lounge",
-        artist: "Smooth Quartet",
+        title: "The Four Seasons (Spring)",
+        artist: "Antonio Vivaldi",
         artwork: "https://images.unsplash.com/photo-1511192336575-5a79af67a629?w=400",
-        url: "https://ia800302.us.archive.org/1/items/smooth-jazz-track/Jazz.mp3"
+        url: "https://upload.wikimedia.org/wikipedia/commons/3/36/Vivaldi_Spring_mvt_1_Allegro_-_John_Harrison_violin.mp3"
       },
       {
-        title: "Ambient Dreams",
-        artist: "Relaxation",
+        title: "Canon in D",
+        artist: "Johann Pachelbel",
         artwork: "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=400",
-        url: "https://ia801402.us.archive.org/3/items/ambient-relaxing-track/Ambient.mp3"
+        url: "https://upload.wikimedia.org/wikipedia/commons/e/e4/Pachelbel_Canon_in_D_Major.mp3"
       }
     ];
 
@@ -360,7 +360,7 @@
       document.getElementById('nowArtist').innerText = track.artist;
 
       audio.src = track.url;
-      audio.play();
+      audio.play().catch(err => console.error("Playback error:", err));
 
       document.getElementById('mainPlayIcon').className = 'fa-solid fa-pause';
     }
@@ -371,7 +371,7 @@
         return;
       }
       if (audio.paused) {
-        audio.play();
+        audio.play().catch(err => console.error("Playback error:", err));
         document.getElementById('mainPlayIcon').className = 'fa-solid fa-pause';
       } else {
         audio.pause();
