@@ -229,18 +229,18 @@
       <div class="search-bar-container">
         <div class="search-input-wrapper">
           <i class="fa-solid fa-magnifying-glass" style="color: var(--text-sub);"></i>
-          <input type="text" id="searchInput" placeholder="Search title or artist..." oninput="handleSearch(event)">
+          <input type="text" id="searchInput" placeholder="Search rock, pop, hiphop..." oninput="handleSearch(event)">
         </div>
       </div>
 
-      <h2 class="section-title" id="displayTitle">Full Length Tracks</h2>
+      <h2 class="section-title" id="displayTitle">Trending Full Songs</h2>
       <div class="track-grid" id="trackGrid"></div>
     </div>
   </div>
 
   <div class="player-bar">
     <div class="now-playing">
-      <img id="nowArt" src="https://picsum.photos/id/1025/400/400" alt="">
+      <img id="nowArt" src="https://via.placeholder.com/56/282828/ffffff?text=Music" alt="">
       <div class="track-details">
         <div class="track-name" id="nowTitle">No Track Selected</div>
         <div class="track-artist" id="nowArtist">Choose a song from the list</div>
@@ -272,104 +272,73 @@
 
   <script>
     const audio = document.getElementById('audioEngine');
-
-    const defaultTracks = [
-      {
-        title: "Lofi Chill Beats",
-        artist: "ChillHop",
-        artwork: "https://picsum.photos/id/1025/400/400",
-        url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
-      },
-      {
-        title: "Acoustic Dreams",
-        artist: "Free Music",
-        artwork: "https://picsum.photos/id/1043/400/400",
-        url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3"
-      },
-      {
-        title: "Night Drive Jam",
-        artist: "Synthwave",
-        artwork: "https://picsum.photos/id/1059/400/400",
-        url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"
-      },
-      {
-        title: "Hip Hop Groove",
-        artist: "Urban Beats",
-        artwork: "https://picsum.photos/id/1062/400/400",
-        url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3"
-      },
-      {
-        title: "Piano Relax",
-        artist: "Classical Vibes",
-        artwork: "https://picsum.photos/id/1074/400/400",
-        url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3"
-      },
-      {
-        title: "Summer Vibes",
-        artist: "Tropical",
-        artwork: "https://picsum.photos/id/1084/400/400",
-        url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3"
-      },
-      {
-        title: "Deep Focus",
-        artist: "Ambient",
-        artwork: "https://picsum.photos/id/1080/400/400",
-        url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3"
-      }
-    ];
-
+    const clientId = 'c5a925f6';
+    let playlist = [];
     let currentIndex = -1;
-    let currentPlaylist = [...defaultTracks];
+    let searchTimeout = null;
 
-    function loadDefaultTracks() {
-      currentPlaylist = [...defaultTracks];
-      document.getElementById('displayTitle').innerText = 'Full Length Tracks';
-      renderGrid(currentPlaylist);
+    async function loadDefaultTracks() {
+      document.getElementById('displayTitle').innerText = 'Trending Full Songs';
+      fetchTracks(`https://api.jamendo.com/v3.0/tracks/?client_id=${clientId}&format=json&limit=24&order=popularity_week`);
     }
 
     function handleSearch(e) {
-      const query = e.target.value.toLowerCase().trim();
-      if (!query) {
-        loadDefaultTracks();
-        return;
+      clearTimeout(searchTimeout);
+      const q = e.target.value.trim();
+      searchTimeout = setTimeout(() => {
+        if (q.length > 1) {
+          document.getElementById('displayTitle').innerText = `Results for "${q}"`;
+          fetchTracks(`https://api.jamendo.com/v3.0/tracks/?client_id=${clientId}&format=json&limit=24&namesearch=${encodeURIComponent(q)}`);
+        } else if (q.length === 0) {
+          loadDefaultTracks();
+        }
+      }, 400);
+    }
+
+    async function fetchTracks(url) {
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+        playlist = data.results || [];
+        renderGrid(playlist);
+      } catch(err) {
+        console.error(err);
       }
-      currentPlaylist = defaultTracks.filter(t => 
-        t.title.toLowerCase().includes(query) || t.artist.toLowerCase().includes(query)
-      );
-      document.getElementById('displayTitle').innerText = `Results for "${query}"`;
-      renderGrid(currentPlaylist);
     }
 
     function renderGrid(tracks) {
       const grid = document.getElementById('trackGrid');
+      if (tracks.length === 0) {
+        grid.innerHTML = '<p style="color: var(--text-sub);">No tracks found.</p>';
+        return;
+      }
       grid.innerHTML = tracks.map((track, idx) => `
         <div class="card" onclick="playIndex(${idx})">
-          <img src="${track.artwork}" alt="${track.title}">
+          <img src="${track.album_image || track.image}" alt="${track.name}">
           <div class="play-badge"><i class="fa-solid fa-play"></i></div>
-          <div class="card-title">${track.title}</div>
-          <div class="card-sub">${track.artist}</div>
+          <div class="card-title">${track.name}</div>
+          <div class="card-sub">${track.artist_name}</div>
         </div>
       `).join('');
     }
 
     function playIndex(idx) {
-      if (idx < 0 || idx >= currentPlaylist.length) return;
+      if (idx < 0 || idx >= playlist.length) return;
       currentIndex = idx;
-      const track = currentPlaylist[currentIndex];
+      const track = playlist[currentIndex];
 
-      document.getElementById('nowArt').src = track.artwork;
-      document.getElementById('nowTitle').innerText = track.title;
-      document.getElementById('nowArtist').innerText = track.artist;
-
-      audio.src = track.url;
+      audio.src = track.audio;
       audio.play();
-
+      
+      document.getElementById('nowArt').src = track.album_image || track.image;
+      document.getElementById('nowTitle').innerText = track.name;
+      document.getElementById('nowArtist').innerText = track.artist_name;
       document.getElementById('mainPlayIcon').className = 'fa-solid fa-pause';
     }
 
     function togglePlay() {
-      if (currentIndex === -1) {
-        playIndex(0);
+      if (!audio.src) {
+        if (playlist.length > 0) playIndex(0);
         return;
       }
       if (audio.paused) {
@@ -382,20 +351,15 @@
     }
 
     function nextTrack() {
-      if (currentIndex < currentPlaylist.length - 1) playIndex(currentIndex + 1);
+      if (currentIndex < playlist.length - 1) playIndex(currentIndex + 1);
     }
 
     function prevTrack() {
       if (currentIndex > 0) playIndex(currentIndex - 1);
     }
 
-    function seekAudio(val) {
-      audio.currentTime = val;
-    }
-
-    function setVolume(val) {
-      audio.volume = val / 100;
-    }
+    function seekAudio(val) { audio.currentTime = val; }
+    function setVolume(val) { audio.volume = val / 100; }
 
     audio.ontimeupdate = () => {
       document.getElementById('seekSlider').max = Math.floor(audio.duration || 0);
