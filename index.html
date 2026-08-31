@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -6,7 +6,6 @@
   <title>Spotify 2.0</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <script src="https://w.soundcloud.com/player/api.js"></script>
   
   <style>
     :root {
@@ -213,8 +212,6 @@
       accent-color: var(--accent);
       cursor: pointer;
     }
-
-    #scPlayer { display: none; }
   </style>
 </head>
 <body>
@@ -232,7 +229,7 @@
       <div class="search-bar-container">
         <div class="search-input-wrapper">
           <i class="fa-solid fa-magnifying-glass" style="color: var(--text-sub);"></i>
-          <input type="text" id="searchInput" placeholder="Filter songs..." oninput="handleSearch(event)">
+          <input type="text" id="searchInput" placeholder="Search title or artist..." oninput="handleSearch(event)">
         </div>
       </div>
 
@@ -243,7 +240,7 @@
 
   <div class="player-bar">
     <div class="now-playing">
-      <img id="nowArt" src="https://via.placeholder.com/56/282828/ffffff?text=Music" alt="">
+      <img id="nowArt" src="https://picsum.photos/id/1025/400/400" alt="">
       <div class="track-details">
         <div class="track-name" id="nowTitle">No Track Selected</div>
         <div class="track-artist" id="nowArtist">Choose a song from the list</div>
@@ -271,87 +268,58 @@
     </div>
   </div>
 
-  <iframe id="scPlayer" src="https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/293"></iframe>
+  <audio id="audioEngine"></audio>
 
   <script>
+    const audio = document.getElementById('audioEngine');
+
     const defaultTracks = [
       {
-        title: "Hit 'Em Up",
-        artist: "2Pac",
+        title: "Lofi Chill Beats",
+        artist: "ChillHop",
         artwork: "https://picsum.photos/id/1025/400/400",
-        url: "https://soundcloud.com/2pac-official/hit-em-up-album-version-explicit"
+        url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
       },
       {
-        title: "Changes",
-        artist: "2Pac",
+        title: "Acoustic Dreams",
+        artist: "Free Music",
         artwork: "https://picsum.photos/id/1043/400/400",
-        url: "https://soundcloud.com/2pac-official/changes"
+        url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3"
       },
       {
-        title: "California Love",
-        artist: "2Pac ft. Dr. Dre",
+        title: "Night Drive Jam",
+        artist: "Synthwave",
         artwork: "https://picsum.photos/id/1059/400/400",
-        url: "https://soundcloud.com/2pac-official/california-love-original-version"
+        url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"
       },
       {
-        title: "Ambition Az a Ridah",
-        artist: "2Pac",
+        title: "Hip Hop Groove",
+        artist: "Urban Beats",
         artwork: "https://picsum.photos/id/1062/400/400",
-        url: "https://soundcloud.com/2pac-official/ambition-z-a-ridah"
+        url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3"
       },
       {
-        title: "God's Plan",
-        artist: "Drake",
+        title: "Piano Relax",
+        artist: "Classical Vibes",
         artwork: "https://picsum.photos/id/1074/400/400",
-        url: "https://soundcloud.com/octobersveryown/drake-gods-plan"
+        url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3"
       },
       {
-        title: "Hotline Bling",
-        artist: "Drake",
+        title: "Summer Vibes",
+        artist: "Tropical",
         artwork: "https://picsum.photos/id/1084/400/400",
-        url: "https://soundcloud.com/octobersveryown/drake-hotline-bling"
+        url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3"
       },
       {
-        title: "HUMBLE.",
-        artist: "Kendrick Lamar",
+        title: "Deep Focus",
+        artist: "Ambient",
         artwork: "https://picsum.photos/id/1080/400/400",
-        url: "https://soundcloud.com/kendrick-lamar-music/humble"
+        url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3"
       }
     ];
 
-    let widget;
     let currentIndex = -1;
-    let isPlaying = false;
     let currentPlaylist = [...defaultTracks];
-
-    window.onload = () => {
-      const iframe = document.getElementById('scPlayer');
-      widget = SC.Widget(iframe);
-
-      widget.bind(SC.Widget.Events.READY, () => {
-        widget.setVolume(80);
-      });
-
-      widget.bind(SC.Widget.Events.PLAY_PROGRESS, (data) => {
-        const curSecs = Math.floor(data.currentPosition / 1000);
-        const durSecs = Math.floor(data.relativePosition * data.currentPosition ? (data.currentPosition / data.relativePosition) / 1000 : 0);
-        
-        document.getElementById('currentTime').innerText = formatTime(curSecs);
-        document.getElementById('seekSlider').value = curSecs;
-        
-        widget.getDuration((duration) => {
-          const totalSecs = Math.floor(duration / 1000);
-          document.getElementById('durationTime').innerText = formatTime(totalSecs);
-          document.getElementById('seekSlider').max = totalSecs;
-        });
-      });
-
-      widget.bind(SC.Widget.Events.FINISH, () => {
-        nextTrack();
-      });
-
-      loadDefaultTracks();
-    };
 
     function loadDefaultTracks() {
       currentPlaylist = [...defaultTracks];
@@ -393,12 +361,9 @@
       document.getElementById('nowTitle').innerText = track.title;
       document.getElementById('nowArtist').innerText = track.artist;
 
-      widget.load(track.url, {
-        auto_play: true,
-        show_artwork: false
-      });
+      audio.src = track.url;
+      audio.play();
 
-      isPlaying = true;
       document.getElementById('mainPlayIcon').className = 'fa-solid fa-pause';
     }
 
@@ -407,18 +372,13 @@
         playIndex(0);
         return;
       }
-
-      widget.isPaused((paused) => {
-        if (paused) {
-          widget.play();
-          isPlaying = true;
-          document.getElementById('mainPlayIcon').className = 'fa-solid fa-pause';
-        } else {
-          widget.pause();
-          isPlaying = false;
-          document.getElementById('mainPlayIcon').className = 'fa-solid fa-play';
-        }
-      });
+      if (audio.paused) {
+        audio.play();
+        document.getElementById('mainPlayIcon').className = 'fa-solid fa-pause';
+      } else {
+        audio.pause();
+        document.getElementById('mainPlayIcon').className = 'fa-solid fa-play';
+      }
     }
 
     function nextTrack() {
@@ -430,12 +390,21 @@
     }
 
     function seekAudio(val) {
-      if (widget) widget.seekTo(val * 1000);
+      audio.currentTime = val;
     }
 
     function setVolume(val) {
-      if (widget) widget.setVolume(val);
+      audio.volume = val / 100;
     }
+
+    audio.ontimeupdate = () => {
+      document.getElementById('seekSlider').max = Math.floor(audio.duration || 0);
+      document.getElementById('seekSlider').value = Math.floor(audio.currentTime || 0);
+      document.getElementById('currentTime').innerText = formatTime(audio.currentTime);
+      document.getElementById('durationTime').innerText = formatTime(audio.duration);
+    };
+
+    audio.onended = () => nextTrack();
 
     function formatTime(secs) {
       if (isNaN(secs) || secs < 0) return '0:00';
@@ -443,6 +412,8 @@
       const s = Math.floor(secs % 60);
       return `${m}:${s < 10 ? '0' : ''}${s}`;
     }
+
+    loadDefaultTracks();
   </script>
 </body>
 </html>
